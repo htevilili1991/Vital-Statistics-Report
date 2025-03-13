@@ -1,0 +1,32 @@
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+    self-contained: true
+
+pdf:
+    number-sections: true
+    colorlinks: true
+    keeptex: true
+    include-in-header: 
+      text: |
+        \usepackage{booktabs}
+        \usepackage{siunitx}
+        \usepackage{pdfpages}
+        \usepackage{fontspec}
+        \setmainfont{Montserrat}[
+          Path = C:/Users/User/Documents/Myfonts/,
+          Extension = .ttf,
+          UprightFont = *-Regular,
+          BoldFont = *-Bold,
+          ItalicFont = *-Italic
+        ]
+        \newcolumntype{d}{S[
+            input-open-uncertainty=,
+            input-close-uncertainty=,
+            parse-numbers = false,
+            table-align-text-pre=false,
+            table-align-text-post=false
+         ]}
+        \AtBeginDocument{\includepdf[pages=1]{cover.pdf}}

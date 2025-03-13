@@ -1,0 +1,382 @@
+---
+title: "Vanuatu Vital Statistics Report"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+    self-contained: true
+    css: styles.css
+date: 'last-modified'
+date-format: '[Release date:] MMMM D, YYYY'
+theme: cosmo
+tbl-cap-location: top
+fig-cap-location: top
+prefer-html: true
+lof: true
+lot: true
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: false
+editor:
+  mode: source
+abstract: |
+  This report is available in the PDF format
+  
+  [PDF Version](./VitalStatisticsReport_latex.pdf) (optimized for printing)
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE)
+# Use cache = TRUE if you want to speed up compilation
+
+knitr::opts_knit$set(output.format = "html")  # Set to "html" for HTML output
+
+# A function to allow for showing some of the inline code
+rinline <- function(code){
+  html <- '<code  class="r">``` `r CODE` ```</code>'
+  sub("CODE", code, html)
+}
+```
+
+```{r, include=FALSE}
+
+library(DBI)
+library(RSQLite)
+library(dplyr)
+library(tidyr)
+library(kableExtra)
+
+db_connection <- dbConnect(RSQLite::SQLite(), "civilRegistry.SQLite")
+
+data <- dbReadTable(db_connection, 'vitalStats')
+
+```
+
+# Executive Summary
+Welcome to the First Annual Vital Statistics Report for Vanuatu, a landmark publication by the Vanuatu Bureau of Statistics. This inaugural release represents a significant step forward in our nation's statistical reporting capabilities and our commitment to providing accurate, timely demographic information.
+
+For the first time, we present a comprehensive compilation of vital statistics that captures the fundamental demographic indicators of our nation. This report establishes the baseline for future annual releases and reflects our dedication to maintaining systematic records of Vanuatu's population dynamics. The data used for this report is sourced from the Department of Civil Registration & Identity Management (CRIM) – Birth & Marriage Registration, which is essential for understanding the vital events occurring within our coverage area.
+
+The launch of this annual report series demonstrates our progress in strengthening national statistical systems and aligning with international standards for demographic reporting. It serves as a crucial reference document for government agencies, development partners, researchers, and the public, providing essential data for evidence-based decision-making.
+
+# Acknowledgement
+
+
+# Completeness
+
+Completeness assesses what proportion of the events (births and deaths) we intended to capture in our coverage area.[^1]
+
+[^1]: Data Analysis and Report Writing for Civil Registration and Vital Statistics, p. 5.
+
+## Completeness of Birth Records
+
+Measuring the completeness of birth registration involves dividing the number of births registered within the year(s) of occurrence by the total estimated number of births for the same period, then multiplying by 100 to express it as a percentage.
+
+$\text{Completeness} (\%) = \left( \frac{\text{Number of Births Registered}}{\text{Total Estimated Number of Births}} \right) \times 100$
+
+## Completeness of Death Records
+
+-   Content here
+
+## Data Limitation
+
+-   Content here
+
+# Birth
+
+-   Content here
+
+## Total births recorded by sex and year
+
+```{r}
+
+pivot_table_cleaned <- data |>
+  group_by(Year_of_Birth, Sex) |>
+  summarise(count = n(), .groups = "drop") |>
+  pivot_wider(names_from = Sex, values_from = count, values_fill = list(count = 0)) |>
+  select(Year_of_Birth, Female, Male) |>
+  mutate(across(Female:Male, as.integer)) |>
+  setNames(c("Year of Birth", "Female", "Male"))
+
+```
+
+```{r}
+# Detecting the noticeable change year (where the largest drop happens)
+pivot_table_cleaned <- pivot_table_cleaned %>%
+  arrange(`Year of Birth`)
+
+# Calculate the year-to-year change in births
+pivot_table_cleaned <- pivot_table_cleaned %>%
+  mutate(
+    Female_change = c(NA, diff(Female)),
+    Male_change = c(NA, diff(Male))
+  )
+
+# Find the first year with a significant drop in both Female and Male births
+change_year <- pivot_table_cleaned %>%
+  filter(Female_change < 0 & Male_change < 0) %>%
+  slice(1) %>%
+  pull(`Year of Birth`)
+
+# If no significant drop is detected, set to the first year after 2016
+if (is.na(change_year)) {
+  change_year <- min(pivot_table_cleaned$`Year of Birth`[pivot_table_cleaned$`Year of Birth` >= 2016])
+}
+
+# Get the first, change year, and last year values
+first_year <- min(pivot_table_cleaned$`Year of Birth`)
+last_year <- max(pivot_table_cleaned$`Year of Birth`)
+
+female_first_year <- pivot_table_cleaned$Female[pivot_table_cleaned$`Year of Birth` == first_year]
+male_first_year <- pivot_table_cleaned$Male[pivot_table_cleaned$`Year of Birth` == first_year]
+
+female_change_year <- pivot_table_cleaned$Female[pivot_table_cleaned$`Year of Birth` == change_year]
+male_change_year <- pivot_table_cleaned$Male[pivot_table_cleaned$`Year of Birth` == change_year]
+
+female_last_year <- pivot_table_cleaned$Female[pivot_table_cleaned$`Year of Birth` == last_year]
+male_last_year <- pivot_table_cleaned$Male[pivot_table_cleaned$`Year of Birth` == last_year]
+
+```
+
+The total number of female births in `r first_year` was `r formatC(female_first_year, big.mark = ",", decimal.mark = ".")` and the total number of male births was `r formatC(male_first_year, big.mark = ",", decimal.mark = ".")`.
+In `r change_year`, the total number of female births was `r formatC(female_change_year, big.mark = ",", decimal.mark = ".")` and the total number of male births was `r formatC(male_change_year, big.mark = ",", decimal.mark = ".")`.
+By `r last_year`, the total number of female births was `r formatC(female_last_year, big.mark = ",", decimal.mark = ".")` and the total number of male births was `r formatC(male_last_year, big.mark = ",", decimal.mark = ".")`.
+
+```{r, echo=FALSE}
+
+library(ggplot2)
+library(highcharter)
+
+```
+
+
+
+::: {.panel-tabset}
+## Chart
+```{r}
+#| label: fig-1
+#| fig-cap: "Yearly Trends in Total Births by Sex"
+
+# Preparing data for the chart
+data_for_chart <- data %>%
+  count(Year_of_Birth, Sex) %>%
+  spread(key = Sex, value = n, fill = 0)
+
+# Creating the chart using highchart
+highchart() %>%
+  hc_chart(type = "line") %>%
+  hc_add_theme(hc_theme_google()) %>%
+  hc_xAxis(categories = data_for_chart$Year_of_Birth) %>%
+  hc_yAxis(title = list(text = "Total births")) %>%
+  hc_series(
+    list(name = "Male", data = data_for_chart$Male, color = "#02263f"),
+    list(name = "Female", data = data_for_chart$Female, color = "#fa2f7c")
+  ) %>%
+  hc_tooltip(shared = TRUE, crosshairs = TRUE) %>%
+  hc_exporting(
+    enabled = TRUE,
+    filename = "figure 1 - Yearly Trends in Total Births by Sex",
+    menuItemDefinitions = list(
+      viewData = NULL  # Removes "View data table" from the menu
+    ),
+    buttons = list(
+      contextButton = list(
+        menuItems = c(
+          "viewFullscreen",
+          "downloadPNG", 
+          "downloadPDF", 
+          "downloadCSV", 
+          "downloadXLS"
+        )
+      )
+    )
+  )
+
+```
+## Table
+```{r}
+#| label: tbl-1
+#| tbl-cap: "Total births recorded by sex and year"
+
+# Cleaning the pivot table and removing unwanted columns
+pivot_table_cleaned <- pivot_table_cleaned[, c(-4, -5)]
+
+# Creating the HTML table with styling
+pivot_table_cleaned %>%
+  kable("html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+
+:::
+
+```{r}
+# Determine trends for female and male births
+female_trend <- ifelse(female_last_year > female_first_year, "increase", 
+                       ifelse(female_last_year < female_first_year, "decrease", "stable trend"))
+male_trend <- ifelse(male_last_year > male_first_year, "increase", 
+                     ifelse(male_last_year < male_first_year, "decrease", "stable trend"))
+
+# Compare the magnitude of change between male and female births
+comparison_trend <- ifelse(
+  abs(female_last_year - female_first_year) > abs(male_last_year - male_first_year), 
+  "the growth rate for female births was slightly higher",
+  ifelse(abs(female_last_year - female_first_year) < abs(male_last_year - male_first_year), 
+         "the growth rate for male births was slightly higher", 
+         "both groups had a similar rate of change")
+)
+```
+
+From `r first_year` to `r last_year`, the total number of female births showed an overall `r if (female_last_year > female_first_year) "increase" else if (female_last_year < female_first_year) "decrease" else "stable trend"`, starting with `r formatC(female_first_year, big.mark = ",", decimal.mark = ".")` in `r first_year` and reaching `r formatC(female_last_year, big.mark = ",", decimal.mark = ".")` in `r last_year`. Similarly, male births displayed an overall `r if (male_last_year > male_first_year) "increase" else if (male_last_year < male_first_year) "decrease" else "stable trend"` over the same period, moving from `r formatC(male_first_year, big.mark = ",", decimal.mark = ".")` to `r formatC(male_last_year, big.mark = ",", decimal.mark = ".")`.
+
+Comparatively, `r if (abs(female_last_year - female_first_year) > abs(male_last_year - male_first_year)) "the growth rate for female births was slightly higher" else if (abs(female_last_year - female_first_year) < abs(male_last_year - male_first_year)) "the growth rate for male births was slightly higher" else "both groups had a similar rate of change"`, indicating a `r if (female_last_year == male_last_year) "converging" else "diverging"` trend by `r last_year`.
+
+## Crude Birth Rate
+
+The Crude Birth Rate (CBR) is a demographic indicator that represents the number of live births occurring in a specific population over a given year, expressed per 1,000 people. It is calculated as the ratio of the total number of births to the total population, multiplied by 1,000.
+
+Mathematically, it’s defined as:
+
+$\text{CBR} (\%) = \left( \frac{\text{Total Number of Live Births in a Year}}{\text{Total Population in the Same Year}} \right) \times 1000$
+
+CBR provides a general measure of birth frequency within a population, helping to assess population growth trends and the reproductive behavior of a society.
+
+*Table to be calculted and provided by Salome*
+
+## Sex Ratio at Birth
+
+The Sex Ratio at Birth (SRB) is a demographic metric that measures the ratio of male to female live births within a population, typically expressed as the number of male births per 100 female births.
+
+
+::: {.panel-tabset}
+## Chart
+```{r}
+#| label: fig-2
+#| fig-cap: "Sex Ratio by Year"
+
+sex_ratio_per_year <- data %>%
+  # Group by Year_of_Birth and Sex
+  group_by(Year_of_Birth, Sex) %>%
+  # Count the number of births per year by sex
+  summarise(count = n(), .groups = "drop") %>%
+  # Spread the data to get separate columns for Male and Female counts
+  pivot_wider(names_from = Sex, values_from = count, values_fill = list(count = 0)) %>%
+  # Calculate the sex ratio per year (Male births per 100 Female births)
+  mutate(Sex_Ratio = round((Male / Female) * 100)) %>%
+  # Select relevant columns for final output
+  select(Year_of_Birth, Sex_Ratio)%>%
+  setNames(c("Year of Birth", "Sex Ratio"))
+
+sex_ratio_per_year <- sex_ratio_per_year %>%
+arrange(`Year of Birth`)
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_add_theme(hc_theme_google()) %>%
+  hc_xAxis(categories = sex_ratio_per_year$`Year of Birth`) %>%
+  hc_yAxis(title = list(text = "Sex Ratio")) %>%
+  hc_series(list(name = "Sex Ratio", data = sex_ratio_per_year$`Sex Ratio`, color = "#02263f")) %>%
+  hc_tooltip(shared = TRUE, crosshairs = TRUE) %>%
+  hc_exporting(enabled = TRUE,filename = "figure 2 - Sex Ratio by Year")
+
+```
+## Table
+```{r}
+#| label: tbl-2
+#| tbl-cap: "Sex Ratio at Birth"
+
+# Assuming `data` is your data frame with columns `Sex` and `Year_of_Birth`
+sex_ratio_per_year <- data %>%
+  # Group by Year_of_Birth and Sex
+  group_by(Year_of_Birth, Sex) %>%
+  # Count the number of births per year by sex
+  summarise(count = n(), .groups = "drop") %>%
+  # Spread the data to get separate columns for Male and Female counts
+  pivot_wider(names_from = Sex, values_from = count, values_fill = list(count = 0)) %>%
+  # Calculate the sex ratio per year (Male births per 100 Female births)
+  mutate(Sex_Ratio = round((Male / Female) * 100)) %>%
+  # Select relevant columns for final output
+  select(Year_of_Birth, Sex_Ratio)%>%
+  setNames(c("Year of Birth", "Sex Ratio"))
+
+
+  sex_ratio_per_year |>
+    kable("html", caption = "") |>
+    kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+:::
+```{r}
+
+# Assuming `sex_ratio_per_year` has been calculated
+sex_ratio_per_year <- sex_ratio_per_year %>%
+  arrange(`Year of Birth`)
+
+# Get the first and last year values
+first_year <- min(sex_ratio_per_year$`Year of Birth`)
+last_year <- max(sex_ratio_per_year$`Year of Birth`)
+
+# Extract the sex ratio for the first and last years
+sex_ratio_first_year <- sex_ratio_per_year$Sex_Ratio[sex_ratio_per_year$`Year of Birth` == first_year]
+sex_ratio_last_year <- sex_ratio_per_year$Sex_Ratio[sex_ratio_per_year$`Year of Birth` == last_year]
+
+```
+
+The Sex Ratio at Birth in `r first_year` was `r formatC(sex_ratio_first_year, big.mark = ",", decimal.mark = ".")`. By `r last_year`, the Sex Ratio at Birth was `r formatC(sex_ratio_last_year, big.mark = ",", decimal.mark = ".")`.
+
+
+
+## Age Specific Fertility Rate (ASFR)
+
+# Death
+
+-   Content here
+
+## Recorded deaths by sex and year
+
+-   Content here
+
+## Recorded deaths by ages and sex
+
+-   Content here
+
+## Age Specific Death Rate (ASDR)
+
+-   Content here
+
+## Life Expectancy at Birth
+
+-   Content here
+
+## Infant Mortality Rate (IMR)
+
+-   Content here
+
+## Causes of Death (Top 10)
+
+-   Content here
+
+# Marriage
+
+-   Content here
+
+## Number of Registered marriages by age
+
+-   Content here
+
+## Status of Marriage
+
+-   Content here
+
+## Crude Marriage Rate (CMR)
+
+-   Content here
+
+# Appendix {.unnumbered}
+
+

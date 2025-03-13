@@ -1,0 +1,10 @@
+abstract: |
+  Welcome to the First Annual Vital Statistics Report for Vanuatu, a landmark publication by the Vanuatu Bureau of Statistics. This inaugural release represents a significant step forward in our nation's statistical reporting capabilities and our commitment to providing accurate, timely demographic information.
+
+  For the first time, we present a comprehensive compilation of vital statistics that captures the fundamental demographic indicators of our nation. This report establishes the baseline for future annual releases and reflects our dedication to maintaining systematic records of Vanuatu's population dynamics. The data used for this report is sourced from the Department of Civil Registration & Identity Management (CRIM) – Birth & Marriage Registration, which is essential for understanding the vital events occurring within our coverage area.
+
+  The launch of this annual report series demonstrates our progress in strengthening national statistical systems and aligning with international standards for demographic reporting. It serves as a crucial reference document for government agencies, development partners, researchers, and the public, providing essential data for evidence-based decision-making.
+
+
+
+

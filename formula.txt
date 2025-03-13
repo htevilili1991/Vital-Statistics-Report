@@ -1,0 +1,1 @@
+$\text{Completeness} (\%) = \left( \frac{\text{Number of Births Registered}}{\text{Total Estimated Number of Births}} \right) \times 100$ 
